@@ -47,6 +47,11 @@ export default function ChatPage({ userName }: any){
             socket.on("update-online-users", (users) => {
                 setOnlineUsers(users);
             });
+
+            connection.on("chat-message", (msg: IMsgDatTypes) => {
+                setChatMessages((msgs) => [...msgs, msg]);
+                scrollToBottom();
+            });
     
             return () => {
                 // Desconectar o socket quando o componente for desmontado
