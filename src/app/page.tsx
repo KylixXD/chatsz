@@ -31,7 +31,7 @@ export default function Home() {
   }
 
   return (
-    <main className="flex w-full h-screen">
+    <main className="flex h-screen w-screen overflow-x-hidden">
         <div className="flex flex-col w-full h-full justify-center items-center gap-2" style={{display: showChat ? "none " : "" }}>
           <div className="w-1/5">
             <Image

@@ -2,7 +2,11 @@
 
 import { useConnection } from "@/context/connect";
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useEffect, useState,useRef } from "react"
+import io from "socket.io-client";
+
+
+const socket = io("http://localhost:3001");
 
 interface IMsgDatTypes {
     user: String;
@@ -15,6 +19,8 @@ export default function ChatPage({ userName }: any){
     const [currentMsg, setCurrentMsg] = useState("");
     const [chatMessages, setChatMessages] = useState<IMsgDatTypes[]>([]);
     const { connection } = useConnection();
+    const [onlineUsers, setOnlineUsers] = useState([]);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
     
     
     async function sendMessage(e:React.FormEvent<HTMLFormElement>){
@@ -35,16 +41,39 @@ export default function ChatPage({ userName }: any){
         if(connection){
             connection.on("receive-msg", (msg: IMsgDatTypes) => {
                 setChatMessages((msgs) => [...msgs, msg]);
-            })
+                scrollToBottom();
+            });
+
+            socket.on("update-online-users", (users) => {
+                setOnlineUsers(users);
+            });
+    
+            return () => {
+                // Desconectar o socket quando o componente for desmontado
+                socket.disconnect();
+            };
         }
     }, [connection]);
 
+    useEffect(() => {
+        scrollToBottom();
+    }, [chatMessages]);
+
+    const scrollToBottom = () => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    };
+
+    
+    const myOwnMessage = "flex flex-row-reverse bg-green-300";
+    const otherUserMessage = "flex bg-gray-300";
 
     return(
-        <div className="flex ">
+        <div className="flex h-full ">
             {/* Barra Lateral */}
-            <div className="flex flex-col w-96 h-screen bg-green-300 p-3 gap-6 border-green-600">
-                <div className="w-2/3">
+            <div className="flex flex-col w-[250px] h-screen bg-green-300 p-3 gap-6 border-green-600">
+                <div className="w-[50%]">
                     <Image
                         src="/images/chatsz.png"
                         alt='Logo chat'
@@ -57,25 +86,35 @@ export default function ChatPage({ userName }: any){
                 </div>
                 <div className="flex flex-col gap-2"> 
                     <span>Usuários online</span>
-                    <span>{userName}</span>
+                    <ul>
+                        {onlineUsers.map((user) => (
+                            <li key={user}>{user}</li>
+                        ))}  
+                    </ul>
                 </div>
             </div>
             
             {/* Chat principal */}
-            <div className="flex flex-col w-full h-screen px-10 py-5 bg-yellow-100 justify-between">
-                <div>
-                    {
-                        chatMessages.map(({user, msg, time}, key) => (
-                            <div key={key} className="p-5">
-                                <div>{user}:</div>
-                                <div>{msg}</div>
-                                <div>{time}</div>
+            <div className="h-[87%] w-[80%]">
+                <div className="mb-2 flex flex-col w-full px-10 py-5 bg-white justify-between h-full overflow-scroll">
+                    <div>
+                        {chatMessages.map(({ user, msg, time }, key) => (
+                            <div
+                                key={key}
+                                className={`mb-2 p-5 ${user === userName ? myOwnMessage : otherUserMessage} bg-green-300 text-black rounded-md`}
+                            >
+                                <div className="max-w-md">
+                                    <div>
+                                        <strong>{user}:</strong>
+                                    </div>
+                                    <div>{msg}</div>
+                                    <div>{time}</div>
+                                </div>
                             </div>
-                        )
-                        )
-                    }
+                        ))}
+                        <div ref={messagesEndRef} />
                 </div>
-                <div>
+                <div className="absolute bottom-2 w-[80%] ">
                     <form onSubmit={sendMessage} className="flex gap-2 w-full justify-center">
                             <input type="text" className="rounded px-2 py-3 text-grey-700 border border-gray-400 w-2/3" placeholder="Digite sua mensagem" 
                             value={currentMsg} 
@@ -87,6 +126,7 @@ export default function ChatPage({ userName }: any){
                         </button>
                     </form>
                 </div>
+            </div>
             </div>
         </div>
     )
