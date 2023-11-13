@@ -21,6 +21,7 @@ export default function ChatPage({ userName }: any){
     const { connection } = useConnection();
     const [onlineUsers, setOnlineUsers] = useState([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [isTyping, setIsTyping] = useState(false);
     
     
     async function sendMessage(e:React.FormEvent<HTMLFormElement>){
@@ -64,10 +65,25 @@ export default function ChatPage({ userName }: any){
         scrollToBottom();
     }, [chatMessages]);
 
+    useEffect(() => {
+        socket.on("update-typing-users", (users) => {
+            const typingUsersString = users.join(', ');
+            setIsTyping(typingUsersString);
+        });
+    }, [socket]);
+
     const scrollToBottom = () => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
+    };
+
+    const handleTyping = () => {
+        socket.emit("typing", userName);
+    };
+    
+    const handleStopTyping = () => {
+        socket.emit("stop-typing", userName);
     };
 
     
@@ -117,13 +133,20 @@ export default function ChatPage({ userName }: any){
                                 </div>
                             </div>
                         ))}
+                        <div>
+                            {isTyping && isTyping !== userName && <div>{isTyping} está digitando...</div>}  
+                        </div>  
                         <div ref={messagesEndRef} />
                 </div>
                 <div className="absolute bottom-2 w-[80%] ">
                     <form onSubmit={sendMessage} className="flex gap-2 w-full justify-center">
                             <input type="text" className="rounded px-2 py-3 text-grey-700 border border-gray-400 w-2/3" placeholder="Digite sua mensagem" 
                             value={currentMsg} 
-                            onChange={(e)=>setCurrentMsg(e.target.value)} 
+                            onChange={(e) => {
+                                setCurrentMsg(e.target.value);
+                                handleTyping();
+                            }}
+                            onBlur={handleStopTyping}
                             required
                         />
                         <button type="submit" className="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-6 py-3 mr-2 mb-2 dark:bg-green-600 dark:hover:bg-green-700 focus:outline-none dark:focus:ring-green-800">

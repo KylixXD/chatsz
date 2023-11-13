@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const httpServer = http.createServer();
 const PORT = process.env.PORT || 3001;
 const onlineUsers = {};
+const typingUsers = [];
 const io = new Server(httpServer, {
     cors: {
         origin: "http://localhost:3000",
@@ -30,6 +31,19 @@ io.on("connection", async (socket) => {
 
         io.emit("update-online-users", Object.values(onlineUsers));
     });
+
+    socket.on("typing", (userName) => {
+        // Emitir evento para atualizar outros usuários
+        io.emit("update-typing-users", [...typingUsers, userName]);
+    });
+    
+    socket.on("stop-typing", (userName) => {
+        // Remover usuário da lista de digitação
+        const updatedTypingUsers = typingUsers.filter((user) => user !== userName);
+        io.emit("update-typing-users", updatedTypingUsers);
+    });
+
+    io.emit("update-typing-users", typingUsers);
 
     socket.on("disconnect", () => {
         console.log("Usuário desconectado: ", socket.id);
